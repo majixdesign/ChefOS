@@ -44,7 +44,7 @@ def main():
 
     st.title("ChefOS")
 
-    dish = st.text_input("What do you want to cook?", value="Butter Chicken")
+    dish = st.text_input("What do you want to cook?", value="", placeholder="Enter any dish here...")
 
     analyze_clicked = st.button("Analyze")
 
