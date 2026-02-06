@@ -15,29 +15,41 @@ st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 # --- 1. DESIGN SYSTEM ---
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+        /* Import Archivo Font */
+        @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&display=swap');
 
         html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Archivo', sans-serif;
             color: #1a1a1a;
         }
 
+        /* Title - Now using Archivo Black/Bold */
         h1 {
-            font-family: 'Playfair Display', serif !important;
+            font-family: 'Archivo', sans-serif !important;
             font-weight: 700 !important;
             font-size: 3rem !important;
             color: #000000 !important;
+            letter-spacing: -0.02em;
         }
         
+        /* Buttons */
         div[data-testid="stForm"] button[kind="secondaryFormSubmit"] {
             background-color: #000000 !important;
             color: #ffffff !important;
             border: none;
             padding: 0.8rem 1.5rem;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Archivo', sans-serif;
             font-weight: 600;
             border-radius: 8px;
             font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Metrics */
+        div[data-testid="stMetricValue"] {
+            font-family: 'Archivo', sans-serif;
+            font-weight: 600;
         }
 
         .footer {
@@ -46,7 +58,7 @@ st.markdown("""
             right: 15px;
             font-size: 0.8rem;
             color: #aaa;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Archivo', sans-serif;
             text-align: right;
         }
         
@@ -147,7 +159,7 @@ def copy_to_clipboard_button(text):
         </script>
         <button id="copyBtn" onclick="copyToClipboard()" style="
             background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; 
-            padding: 10px 20px; font-family: sans-serif; font-size: 14px; 
+            padding: 10px 20px; font-family: 'Archivo', sans-serif; font-size: 14px; 
             cursor: pointer; width: 100%; font-weight: 600; color: #333;">
             📄 Copy to Clipboard
         </button>
@@ -347,7 +359,9 @@ if st.session_state.recipe_data:
         with st.container(border=True):
             st.markdown("**🔥 Instructions**")
             for idx, step in enumerate(r.get('steps', [])):
-                st.markdown(f"**{idx+1}.** {step}")
+                # CLEANER: Remove existing numbers like "1." from the AI text
+                clean_step = re.sub(r'^\d+\.?\s*', '', step)
+                st.markdown(f"**{idx+1}.** {clean_step}")
             
             st.markdown("---")
             st.caption(f"✨ **Chef's Secret:** {r.get('chef_tip', '')}")
@@ -363,7 +377,9 @@ if st.session_state.recipe_data:
     for i in r.get('ingredients_list', []): share_text += f"- {i}\n"
     
     share_text += "\n🔥 INSTRUCTIONS:\n"
-    for i, s in enumerate(r.get('steps', [])): share_text += f"{i+1}. {s}\n"
+    for i, s in enumerate(r.get('steps', [])): 
+        clean_step = re.sub(r'^\d+\.?\s*', '', s)
+        share_text += f"{i+1}. {clean_step}\n"
     
     share_text += f"\n✨ Chef's Secret: {r.get('chef_tip', '')}"
     
