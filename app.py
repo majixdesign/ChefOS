@@ -15,7 +15,6 @@ st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 # --- 1. DESIGN SYSTEM ---
 st.markdown("""
     <style>
-        /* Import Archivo Font */
         @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&display=swap');
 
         html, body, [class*="css"] {
@@ -23,7 +22,6 @@ st.markdown("""
             color: #1a1a1a;
         }
 
-        /* Title */
         h1 {
             font-family: 'Archivo', sans-serif !important;
             font-weight: 700 !important;
@@ -32,7 +30,6 @@ st.markdown("""
             letter-spacing: -0.02em;
         }
         
-        /* Buttons */
         div[data-testid="stForm"] button[kind="secondaryFormSubmit"] {
             background-color: #000000 !important;
             color: #ffffff !important;
@@ -46,7 +43,6 @@ st.markdown("""
             letter-spacing: 0.05em;
         }
 
-        /* Metrics */
         div[data-testid="stMetricValue"] {
             font-family: 'Archivo', sans-serif;
             font-weight: 600;
@@ -81,7 +77,7 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- 3. THE "MODEL HUNTER" ---
+# --- 3. MODEL HUNTER ---
 def get_working_model():
     try:
         all_models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -169,34 +165,39 @@ def copy_to_clipboard_button(text):
 
 def speak_text_button(text):
     """
-    Browser-native Text-to-Speech (Zero API Cost)
+    Browser-native Text-to-Speech with Stop button.
     """
     escaped_text = text.replace("\n", " ").replace("\"", "'")
     components.html(
         f"""
         <script>
-        function speak() {{
-            window.speechSynthesis.cancel(); // Stop previous
-            const msg = new SpeechSynthesisUtterance("{escaped_text}");
-            msg.rate = 0.9; // Slightly slower for clarity
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
+        var synth = window.speechSynthesis;
+        var utterance = new SpeechSynthesisUtterance("{escaped_text}");
+        utterance.rate = 0.9;
+        
+        function play() {{
+            synth.cancel(); // Stop any previous
+            synth.speak(utterance);
+        }}
+        
+        function stop() {{
+            synth.cancel();
         }}
         </script>
-        <button onclick="speak()" style="
-            background-color: #ffffff; 
-            border: 1px solid #000; 
-            border-radius: 8px; 
-            padding: 8px 15px; 
-            font-family: 'Archivo', sans-serif; 
-            font-size: 13px; 
-            cursor: pointer; 
-            width: 100%;
-            font-weight: 600;
-            color: #000;
-            margin-bottom: 10px;">
-            🔊 Read Instructions
-        </button>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <button onclick="play()" style="
+                flex: 1; background-color: #ffffff; border: 1px solid #000; border-radius: 8px; 
+                padding: 8px 15px; font-family: 'Archivo', sans-serif; font-size: 13px; 
+                cursor: pointer; font-weight: 600; color: #000;">
+                ▶️ Read
+            </button>
+            <button onclick="stop()" style="
+                flex: 0 0 auto; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; 
+                padding: 8px 15px; font-family: 'Archivo', sans-serif; font-size: 13px; 
+                cursor: pointer; font-weight: 600; color: #333;">
+                ⏹️ Stop
+            </button>
+        </div>
         """,
         height=45
     )
@@ -394,19 +395,21 @@ if st.session_state.recipe_data:
             # HEADER + AUDIO BUTTON
             st.markdown("**🔥 Instructions**")
             
-            # COMPILE TEXT FOR SPEECH
+            # COMPILE TEXT FOR SPEECH (Aggressive Clean)
             speech_text = f"Recipe for {st.session_state.dish_name}. "
             if show_strategy: speech_text += f"Strategy: {pivot_msg}. "
             speech_text += "Instructions: "
             for s in r.get('steps', []):
-                clean = re.sub(r'^\d+\.?\s*', '', s)
+                # Clean numbers for speech too
+                clean = re.sub(r'^[\d\.\s\*\-]+', '', s)
                 speech_text += f"{clean}. "
                 
             speak_text_button(speech_text)
             
-            # STEPS
+            # STEPS (Numbering Fix: Aggressive Regex)
             for idx, step in enumerate(r.get('steps', [])):
-                clean_step = re.sub(r'^\d+\.?\s*', '', step)
+                # This regex strips leading digits, dots, spaces, bullets, and dashes
+                clean_step = re.sub(r'^[\d\.\s\*\-]+', '', step)
                 st.markdown(f"**{idx+1}.** {clean_step}")
             
             st.markdown("---")
@@ -424,7 +427,7 @@ if st.session_state.recipe_data:
     
     share_text += "\n🔥 INSTRUCTIONS:\n"
     for i, s in enumerate(r.get('steps', [])): 
-        clean_step = re.sub(r'^\d+\.?\s*', '', s)
+        clean_step = re.sub(r'^[\d\.\s\*\-]+', '', s)
         share_text += f"{i+1}. {clean_step}\n"
     
     share_text += f"\n✨ Chef's Secret: {r.get('chef_tip', '')}"
