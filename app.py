@@ -70,14 +70,8 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 def get_working_model():
-    try:
-        my_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        preferred_order = ["models/gemini-1.5-flash", "models/gemini-2.0-flash", "models/gemini-1.5-pro"]
-        for p in preferred_order:
-            if p in my_models: return genai.GenerativeModel(p)
-        return genai.GenerativeModel(my_models[0]) if my_models else genai.GenerativeModel("models/gemini-1.5-flash")
-    except:
-        return genai.GenerativeModel("models/gemini-1.5-flash")
+    # Priority: Flash 1.5 because it supports JSON Mode reliably and is fast
+    return genai.GenerativeModel("models/gemini-1.5-flash")
 
 model = get_working_model()
 
@@ -99,39 +93,19 @@ def extract_items(data):
             
     return items
 
-def smart_key_search(data, target_keywords):
-    """Fuzzy matching for keys."""
-    # 1. Exact or Contain match
-    for key, value in data.items():
-        if any(k in key.lower() for k in target_keywords):
-            return value
-    return None
-
-def fallback_extraction(data):
-    """Last Resort: Grab the first two lists found."""
-    found_lists = []
-    for val in data.values():
-        if isinstance(val, list):
-            found_lists.append(val)
-    
-    # Return found lists or empty placeholders
-    core = found_lists[0] if len(found_lists) > 0 else []
-    char = found_lists[1] if len(found_lists) > 1 else []
-    return core, char
-
-def generate_with_retry(prompt, retries=2):
-    """Retries the AI call if JSON parsing fails."""
-    for attempt in range(retries + 1):
-        try:
-            response = model.generate_content(prompt)
-            text = response.text.replace("```json", "").replace("```", "").strip()
-            match = re.search(r'\{[\s\S]*\}', text)
-            if match:
-                return json.loads(match.group(0))
-        except Exception:
-            time.sleep(1)
-            continue
-    return None
+def generate_json_safe(prompt):
+    """
+    Uses Gemini's Native JSON Mode.
+    This forces the model to output ONLY valid JSON, eliminating parsing errors.
+    """
+    try:
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return None
 
 def copy_to_clipboard_button(text):
     escaped_text = text.replace("\n", "\\n").replace("\"", "\\\"")
@@ -225,9 +199,10 @@ if submitted or st.session_state.trigger_search:
                - Dried Spices (Cumin, Paprika).
                - Acids & Garnishes (Lemon, Cheese toppings).
             
-            Output: JSON only. No "None" values.
+            Output: JSON only.
             """
-            data = generate_with_retry(prompt, retries=2)
+            # NATIVE JSON MODE
+            data = generate_json_safe(prompt)
             
             if data:
                 st.session_state.ingredients = data
@@ -243,17 +218,16 @@ if st.session_state.ingredients:
     data = st.session_state.ingredients
     data = {k.lower(): v for k, v in data.items()}
     
-    # --- INTELLIGENT PARSER V2.4 ---
-    # 1. Try Key Match
-    raw_core = smart_key_search(data, ["core", "must", "vital", "main", "structure"])
-    raw_char = smart_key_search(data, ["char", "soul", "flavor", "optional"])
-    
-    # 2. Fallback if keys are totally weird
-    if not raw_core:
-        raw_core, raw_char = fallback_extraction(data)
-        
-    list_core = extract_items(raw_core)
-    list_character = extract_items(raw_char)
+    # Simple extraction (JSON Mode guarantees keys exist usually, but we safeguard)
+    list_core = extract_items(data.get('core') or data.get('must_haves') or [])
+    list_character = extract_items(data.get('character') or data.get('soul') or [])
+
+    # If JSON Mode fails to give keys (rare), assume list 1 is core
+    if not list_core and not list_character:
+         # Fallback to values if flattened
+         lists = [v for v in data.values() if isinstance(v, list)]
+         if len(lists) > 0: list_core = extract_items(lists[0])
+         if len(lists) > 1: list_character = extract_items(lists[1])
 
     st.divider()
     st.subheader(f"Inventory: {st.session_state.dish_name}")
@@ -296,7 +270,8 @@ if st.session_state.ingredients:
                     "chef_tip": "A pro tip."
                 }}
                 """
-                r_data = generate_with_retry(final_prompt, retries=2)
+                # NATIVE JSON MODE
+                r_data = generate_json_safe(final_prompt)
                 
                 if r_data:
                     st.session_state.recipe_data = r_data
