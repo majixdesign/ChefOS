@@ -12,10 +12,9 @@ import streamlit.components.v1 as components
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 
-# --- 1. DESIGN SYSTEM (Clean, Modern, Inter Font) ---
+# --- 1. DESIGN SYSTEM ---
 st.markdown("""
     <style>
-        /* Import Inter Font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
 
         html, body, [class*="css"] {
@@ -23,7 +22,6 @@ st.markdown("""
             color: #1a1a1a;
         }
 
-        /* Title */
         h1 {
             font-family: 'Playfair Display', serif !important;
             font-weight: 700 !important;
@@ -31,7 +29,6 @@ st.markdown("""
             color: #000000 !important;
         }
         
-        /* Buttons */
         div[data-testid="stForm"] button[kind="secondaryFormSubmit"] {
             background-color: #000000 !important;
             color: #ffffff !important;
@@ -43,7 +40,6 @@ st.markdown("""
             font-size: 1rem;
         }
 
-        /* Footer */
         .footer {
             position: fixed;
             bottom: 15px;
@@ -73,7 +69,6 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- MODEL SELECTOR ---
 def get_working_model():
     try:
         my_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -92,6 +87,7 @@ def extract_items(data):
     """Bouncer: Removes junk data."""
     items = []
     IGNORE_LIST = ["none", "null", "n/a", "undefined", "", "missing", "optional"]
+    
     if isinstance(data, dict):
         for v in data.values(): items.extend(extract_items(v))
     elif isinstance(data, list):
@@ -100,11 +96,24 @@ def extract_items(data):
         clean_text = str(data).strip()
         if len(clean_text) > 2 and clean_text.lower() not in IGNORE_LIST:
             items.append(clean_text)
+            
     return items
 
-# --- JAVASCRIPT COPY HACK ---
+def generate_with_retry(prompt, retries=1):
+    """Retries the AI call if JSON parsing fails."""
+    for attempt in range(retries + 1):
+        try:
+            response = model.generate_content(prompt)
+            text = response.text.replace("```json", "").replace("```", "").strip()
+            match = re.search(r'\{[\s\S]*\}', text)
+            if match:
+                return json.loads(match.group(0))
+        except Exception:
+            time.sleep(1)
+            continue
+    return None
+
 def copy_to_clipboard_button(text):
-    # This injects a hidden textarea and a button that copies from it
     escaped_text = text.replace("\n", "\\n").replace("\"", "\\\"")
     components.html(
         f"""
@@ -117,23 +126,15 @@ def copy_to_clipboard_button(text):
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            
             const btn = document.getElementById("copyBtn");
             btn.innerText = "✅ Copied!";
             setTimeout(() => {{ btn.innerText = "📄 Copy to Clipboard"; }}, 2000);
         }}
         </script>
         <button id="copyBtn" onclick="copyToClipboard()" style="
-            background-color: #f0f0f0; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            padding: 10px 20px; 
-            font-family: sans-serif; 
-            font-size: 14px; 
-            cursor: pointer; 
-            width: 100%;
-            font-weight: 600;
-            color: #333;">
+            background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 8px; 
+            padding: 10px 20px; font-family: sans-serif; font-size: 14px; 
+            cursor: pointer; width: 100%; font-weight: 600; color: #333;">
             📄 Copy to Clipboard
         </button>
         """,
@@ -186,10 +187,8 @@ if submitted or st.session_state.trigger_search:
         st.session_state.recipe_data = None
         st.session_state.toast_shown = False
         
-        # SPINNER ONLY - No expanding box
         with st.spinner(f"👨‍🍳 Organizing the kitchen for {final_dish}..."):
             
-            # --- THE NEW 2-COLUMN LOGIC ---
             prompt = f"""
             Dish: {final_dish} for {servings} people.
             
@@ -208,17 +207,12 @@ if submitted or st.session_state.trigger_search:
             
             Output: JSON only. No "None" values.
             """
-            try:
-                time.sleep(0.5)
-                response = model.generate_content(prompt)
-                text = response.text.replace("```json", "").replace("```", "").strip()
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    st.session_state.ingredients = json.loads(match.group(0))
-                else:
-                    st.error("Could not parse ingredients.")
-            except Exception as e:
-                st.error("Chef is overwhelmed. Please try again.")
+            data = generate_with_retry(prompt)
+            
+            if data:
+                st.session_state.ingredients = data
+            else:
+                st.error("Sous couldn't read the recipe book. Please try again.")
 
 # --- DASHBOARD ---
 if st.session_state.ingredients:
@@ -236,20 +230,17 @@ if st.session_state.ingredients:
     st.subheader(f"Inventory: {st.session_state.dish_name}")
     st.caption("Uncheck what is missing. We will adapt.")
     
-    # 2-COLUMN LAYOUT
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("🧱 **The Core (Non-Negotiables)**")
-        # Pre-checked
-        core_checks = [st.checkbox(i, True, key=f"c_{x}") for x, i in enumerate(list_core)]
+        core_checks = [st.checkbox(str(i), True, key=f"c_{x}") for x, i in enumerate(list_core)]
     with c2:
         st.markdown("✨ **The Character (Negotiable)**")
-        character_avail = [i for x, i in enumerate(list_character) if st.checkbox(i, True, key=f"ch_{x}")]
+        character_avail = [i for x, i in enumerate(list_character) if st.checkbox(str(i), True, key=f"ch_{x}")]
         character_missing = [i for i in list_character if i not in character_avail]
 
     st.write("")
     
-    # COOK BUTTON
     if all(core_checks) and list_core:
         if st.button("Generate Chef's Recipe", type="primary", use_container_width=True):
             
@@ -270,23 +261,21 @@ if st.session_state.ingredients:
                 OUTPUT FORMAT (JSON):
                 {{
                     "meta": {{ "prep_time": "15 mins", "cook_time": "30 mins", "difficulty": "Medium" }},
-                    "pivot_strategy": "Explain how we adapt to missing items. If nothing missing, say 'We have a full pantry!'",
+                    "pivot_strategy": "Explain how we adapt to missing items. If nothing missing, say 'Full Pantry'",
                     "ingredients_list": ["Item 1", "Item 2"],
                     "steps": ["Step 1...", "Step 2..."],
                     "chef_tip": "A pro tip."
                 }}
                 """
-                try:
-                    resp = model.generate_content(final_prompt)
-                    clean_resp = resp.text.replace("```json", "").replace("```", "").strip()
-                    match = re.search(r'\{.*\}', clean_resp, re.DOTALL)
-                    if match:
-                        st.session_state.recipe_data = json.loads(match.group(0))
-                except Exception as e:
+                r_data = generate_with_retry(final_prompt)
+                
+                if r_data:
+                    st.session_state.recipe_data = r_data
+                else:
                     st.error("Chef is overwhelmed. Please try again.")
 
     elif not list_core:
-        st.error("⚠️ AI Error: No ingredients found.")
+        st.error("⚠️ AI Error: No ingredients found. Please try again.")
     else:
         st.error("🛑 You are missing Core Ingredients. This dish will not work physically without them.")
 
@@ -296,7 +285,7 @@ if st.session_state.recipe_data:
     
     st.divider()
     
-    # 1. HEADER & META
+    # 1. HEADER
     st.markdown(f"## 🥘 {st.session_state.dish_name}")
     
     m1, m2, m3 = st.columns(3)
@@ -304,14 +293,20 @@ if st.session_state.recipe_data:
     m2.metric("Cook Time", r['meta'].get('cook_time', '--'))
     m3.metric("Difficulty", r['meta'].get('difficulty', '--'))
     
-    # 2. THE PIVOT
+    # 2. PIVOT (Conditional Logic)
     pivot_msg = r.get('pivot_strategy', '')
-    if pivot_msg and "full pantry" not in pivot_msg.lower():
+    show_strategy = True
+    
+    # Logic to HIDE strategy if pantry is full
+    if not pivot_msg or "full pantry" in pivot_msg.lower() or "everything needed" in pivot_msg.lower() or "no missing" in pivot_msg.lower():
+        show_strategy = False
+
+    if show_strategy:
         with st.container(border=True):
             st.markdown(f"**💡 Chef's Strategy**")
             st.info(pivot_msg)
     
-    # 3. INGREDIENTS & STEPS
+    # 3. CONTENT
     c_ing, c_step = st.columns([1, 2])
     
     with c_ing:
@@ -331,29 +326,37 @@ if st.session_state.recipe_data:
 
     # 4. ACTION BAR
     st.write("")
+    
+    # --- CONSTRUCT TEXT FOR SHARING ---
+    # Smart logic: If strategy is hidden, don't include it in text
+    share_text = f"🥘 {st.session_state.dish_name}\n\n"
+    if show_strategy:
+        share_text += f"💡 STRATEGY: {pivot_msg}\n\n"
+    
+    share_text += "🛒 INGREDIENTS:\n"
+    for i in r.get('ingredients_list', []): share_text += f"- {i}\n"
+    
+    share_text += "\n🔥 INSTRUCTIONS:\n"
+    for i, s in enumerate(r.get('steps', [])): share_text += f"{i+1}. {s}\n"
+    
+    share_text += f"\n✨ Chef's Secret: {r.get('chef_tip', '')}"
+    
+    # --- BUTTONS ---
     a1, a2 = st.columns(2)
     with a1:
-        # WhatsApp Share
-        recipe_str = f"Cooking {st.session_state.dish_name}!\n\nStrategy: {pivot_msg}"
-        encoded = urllib.parse.quote(recipe_str)
-        st.link_button("💬 Share on WhatsApp", f"https://wa.me/?text={encoded}", use_container_width=True)
+        # Full Recipe for WhatsApp
+        encoded_wa = urllib.parse.quote(share_text)
+        st.link_button("💬 Share Recipe on WhatsApp", f"https://wa.me/?text={encoded_wa}", use_container_width=True)
+        
     with a2:
         if st.button("🔄 Start New Dish", use_container_width=True):
             st.session_state.clear()
             st.rerun()
             
-    # 5. COPY BUTTON (REAL)
+    # 5. COPY
     st.write("")
     st.markdown("### Save Recipe")
-    
-    # Construct Plain Text
-    copy_text = f"{st.session_state.dish_name}\n\nSTRATEGY: {pivot_msg}\n\nINGREDIENTS:\n"
-    for i in r.get('ingredients_list', []): copy_text += f"- {i}\n"
-    copy_text += "\nINSTRUCTIONS:\n"
-    for i, s in enumerate(r.get('steps', [])): copy_text += f"{i+1}. {s}\n"
-    
-    # Inject Custom Button
-    copy_to_clipboard_button(copy_text)
+    copy_to_clipboard_button(share_text)
 
 # --- FOOTER ---
 st.markdown('<div class="footer">Powered by Gemini</div>', unsafe_allow_html=True)
