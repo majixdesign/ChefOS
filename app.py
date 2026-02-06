@@ -10,7 +10,7 @@ import urllib.parse
 import streamlit.components.v1 as components
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Sous v3.1", page_icon="🍳", layout="wide")
+st.set_page_config(page_title="Sous v3.2", page_icon="🍳", layout="wide")
 
 # --- 1. DESIGN SYSTEM ---
 st.markdown("""
@@ -70,8 +70,8 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 def get_working_model():
-    # Switching to PRO for better stability
-    return genai.GenerativeModel("models/gemini-1.5-pro")
+    # REVERTED TO FLASH FOR STABILITY & RATE LIMITS
+    return genai.GenerativeModel("models/gemini-1.5-flash")
 
 model = get_working_model()
 
@@ -87,7 +87,6 @@ def extract_items(data):
     elif isinstance(data, list):
         for item in data: items.extend(extract_items(item))
     elif data is not None:
-        # FORCE STRING CONVERSION IMMEDIATELY
         clean_text = str(data).strip()
         if len(clean_text) > 2 and clean_text.lower() not in IGNORE_LIST:
             items.append(clean_text)
@@ -100,6 +99,8 @@ def robust_api_call(prompt):
     1. Tries Native JSON Mode.
     2. If that fails, fails over to Regex Parsing.
     """
+    last_error = None
+    
     # Attempt 1: Native JSON
     try:
         response = model.generate_content(
@@ -107,20 +108,22 @@ def robust_api_call(prompt):
             generation_config={"response_mime_type": "application/json"}
         )
         return json.loads(response.text)
-    except Exception:
-        # Attempt 2: Brute Force Regex
-        try:
-            response = model.generate_content(prompt)
-            text = response.text
-            # Strip Markdown wrappers
-            text = text.replace("```json", "").replace("```", "").strip()
-            # Find the largest {...} block
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                return json.loads(match.group(0))
-        except Exception:
-            return None
-    return None
+    except Exception as e:
+        last_error = e
+
+    # Attempt 2: Brute Force Regex (Fallback)
+    try:
+        response = model.generate_content(prompt)
+        text = response.text
+        text = text.replace("```json", "").replace("```", "").strip()
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+    except Exception as e:
+        last_error = e
+        
+    # Return Error if both fail
+    return f"ERROR: {str(last_error)}"
 
 def copy_to_clipboard_button(text):
     escaped_text = text.replace("\n", "\\n").replace("\"", "\\\"")
@@ -167,7 +170,7 @@ if "toast_shown" not in st.session_state: st.session_state.toast_shown = False
 
 c_title, c_surprise = st.columns([4, 1])
 with c_title:
-    st.title("Sous v3.1")
+    st.title("Sous v3.2")
     st.caption("The adaptive kitchen co-pilot.")
 with c_surprise:
     st.write("") 
@@ -219,10 +222,11 @@ if submitted or st.session_state.trigger_search:
             
             data = robust_api_call(prompt)
             
-            if data:
+            if isinstance(data, dict):
                 st.session_state.ingredients = data
             else:
-                st.error("Sous couldn't read the recipe book. Please try again.")
+                # SHOW ACTUAL ERROR FOR DEBUGGING
+                st.error(f"Sous couldn't read the recipe book.\nTechnical Details: {data}")
 
 # --- DASHBOARD ---
 if st.session_state.ingredients:
@@ -237,7 +241,7 @@ if st.session_state.ingredients:
     list_core = extract_items(data.get('core') or data.get('must_haves') or [])
     list_character = extract_items(data.get('character') or data.get('soul') or [])
     
-    # Fallback if keys are weird
+    # Fallback
     if not list_core and not list_character:
          lists = [v for v in data.values() if isinstance(v, list)]
          if len(lists) > 0: list_core = extract_items(lists[0])
@@ -286,10 +290,10 @@ if st.session_state.ingredients:
                 """
                 r_data = robust_api_call(final_prompt)
                 
-                if r_data:
+                if isinstance(r_data, dict):
                     st.session_state.recipe_data = r_data
                 else:
-                    st.error("Chef is overwhelmed. Please try again.")
+                    st.error(f"Chef is overwhelmed.\nTechnical Details: {r_data}")
 
     elif not list_core:
         st.error("⚠️ AI Error: No ingredients found. Please try again.")
