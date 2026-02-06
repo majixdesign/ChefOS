@@ -1,3 +1,4 @@
+# Force Update: Dynamic Model Selector
 import streamlit as st
 import google.generativeai as genai
 import os
@@ -18,30 +19,58 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # 1. Configuration
 load_dotenv()
-
-# Try to find the Google Key
 api_key = os.getenv("GOOGLE_API_KEY")
+
 if not api_key:
     try:
         api_key = st.secrets["GOOGLE_API_KEY"]
     except:
-        st.error("🔑 Google API Key missing. Please check your Secrets.")
+        st.error("🔑 Google API Key missing. Please check Secrets.")
         st.stop()
 
 genai.configure(api_key=api_key)
 
-# --- MODEL SETUP ---
-# Since you have Billing enabled, we strictly use 1.5 Flash.
-# It is the most reliable, cheapest, and highest-limit model.
-try:
-    model = genai.GenerativeModel("models/gemini-1.5-flash")
-except:
-    # Fallback just in case
-    model = genai.GenerativeModel("gemini-1.5-flash")
+# --- DYNAMIC MODEL SELECTOR ---
+def get_working_model():
+    """
+    Asks Google what models are actually enabled for this API Key 
+    and picks the best available one.
+    """
+    try:
+        # Get the real list from your account
+        my_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority: We prefer Flash because it's fast/cheap
+        # But we will take WHATEVER is in the list.
+        preferred_order = [
+            "models/gemini-1.5-flash",
+            "models/gemini-2.0-flash",       # <--- Your account has this!
+            "models/gemini-2.0-flash-lite",
+            "models/gemini-1.5-pro",
+            "models/gemini-pro"
+        ]
+        
+        # 1. Look for a match
+        for p in preferred_order:
+            if p in my_models:
+                return genai.GenerativeModel(p), p
+        
+        # 2. If no match, take the first valid one
+        if my_models:
+            return genai.GenerativeModel(my_models[0]), my_models[0]
+            
+        # 3. Hail Mary
+        return genai.GenerativeModel("models/gemini-2.0-flash"), "models/gemini-2.0-flash"
+
+    except Exception as e:
+        # Fallback if listing fails
+        return genai.GenerativeModel("models/gemini-2.0-flash"), "Default (2.0)"
+
+model, model_name = get_working_model()
 
 # 2. Header
 st.title("Sous 🍳")
-st.caption("Your smart kitchen co-pilot. (Powered by Gemini)")
+st.caption(f"Your smart kitchen co-pilot. (Engine: {model_name.replace('models/', '')})")
 
 # 3. Input
 with st.form("input_form"):
@@ -63,9 +92,8 @@ if submitted and dish:
     st.session_state.recipe_text = None
     st.session_state.generated_recipe = False
     
-    with st.status("👨‍🍳 Sous is analyzing the dish...", expanded=True) as status:
+    with st.status("👨‍🍳 Sous is analyzing...", expanded=True) as status:
         
-        # LOGIC PROMPT
         prompt = f"""
         I want to cook {dish} for {servings} people. 
         Break down the ingredients into a JSON object with these 3 keys:
@@ -78,8 +106,8 @@ if submitted and dish:
         """
         
         try:
-            # We can be faster now, but a tiny sleep is still polite
-            time.sleep(0.5) 
+            # Sleep slightly to be polite
+            time.sleep(0.5)
             response = model.generate_content(prompt)
             cleaned = response.text.replace("```json", "").replace("```", "").strip()
             data = json.loads(cleaned)
@@ -89,7 +117,6 @@ if submitted and dish:
         except Exception as e:
             status.update(label="Connection Error", state="error")
             st.error(f"Error: {e}")
-            st.info("Check if your API Key is linked to the Billing Project in Google AI Studio.")
 
 # 5. Output
 if st.session_state.ingredients:
@@ -120,7 +147,6 @@ if st.session_state.ingredients:
             if "recipe_text" not in st.session_state or gen_btn:
                 with st.spinner("👨‍🍳 Chef is cooking up the plan..."):
                     
-                    # Context Passing (The "Bug Fix" we learned earlier)
                     confirmed_list = data.get('heroes', []) + data.get('pantry', []) + available_vars
                     
                     final_prompt = f"""
@@ -132,7 +158,7 @@ if st.session_state.ingredients:
                     2. User is MISSING: {missing}.
                     
                     Structure:
-                    1. **The Fix:** Reassure the user about the missing items (e.g. "No Mint? We'll rely on the coriander...").
+                    1. **The Fix:** Reassure the user about the missing items.
                     2. **The Recipe:** Step-by-step, descriptive, mouth-watering instructions. Bold the ingredients.
                     """
                     try:
@@ -155,4 +181,4 @@ if st.session_state.ingredients:
                         st.session_state.clear()
                         st.rerun()
     else:
-        st.error("🛑 Need Heroes!") 
+        st.error("🛑 Need Heroes!")
