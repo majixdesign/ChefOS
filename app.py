@@ -30,9 +30,9 @@ if not api_key:
 
 genai.configure(api_key=api_key)
 
-# --- CRITICAL UPDATE: USING GEMINI 2.0 FLASH ---
-# This model was explicitly found in your diagnostic test.
-model = genai.GenerativeModel("models/gemini-2.0-flash")
+# We are switching to 1.5-flash because your library is now updated 
+# and this model has the highest free tier (1,500 req/day).
+model = genai.GenerativeModel("models/gemini-1.5-flash")
 
 # 2. The Header
 st.title("Sous 🍳")
