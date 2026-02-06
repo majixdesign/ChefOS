@@ -9,52 +9,51 @@ import random
 import urllib.parse
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Sous", page_icon="🍽️", layout="wide")
+st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 
-# --- 1. DESIGN SYSTEM (Simple Home Edit Style) ---
+# --- 1. DESIGN SYSTEM (Clean, Modern, Card-Based) ---
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600&family=Playfair+Display:wght@700&display=swap');
+        /* Import Inter Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap');
 
         html, body, [class*="css"] {
-            font-family: 'Archivo', sans-serif;
+            font-family: 'Inter', sans-serif;
             color: #1a1a1a;
         }
 
+        /* Title */
         h1 {
             font-family: 'Playfair Display', serif !important;
             font-weight: 700 !important;
-            font-size: 3.5rem !important;
+            font-size: 3rem !important;
             color: #000000 !important;
-            margin-bottom: 0rem !important;
         }
         
-        .stCaption {
-            font-size: 1.1rem !important;
-            color: #666 !important;
-            font-family: 'Archivo', sans-serif !important;
+        /* Card Styling (Containers) */
+        div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+            # background-color: #f9f9f9;
+            # border-radius: 12px;
+            # padding: 1rem;
         }
 
-        /* Minimalist Black Buttons */
+        /* Buttons */
         div[data-testid="stForm"] button[kind="secondaryFormSubmit"] {
             background-color: #000000 !important;
             color: #ffffff !important;
             border: none;
             padding: 0.6rem 1.2rem;
-            font-family: 'Archivo', sans-serif;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        div[data-testid="stForm"] button[kind="secondaryFormSubmit"]:hover {
-            background-color: #333333 !important;
-            transform: translateY(-1px);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            border-radius: 8px;
         }
 
-        /* Checkboxes */
-        div[data-testid="stCheckbox"] label span {
-            font-size: 1.05rem;
+        /* Metrics (Prep Time etc) */
+        div[data-testid="stMetricValue"] {
+            font-size: 1.2rem !important;
+            font-family: 'Inter', sans-serif;
         }
-        
+
         /* Footer */
         .footer {
             position: fixed;
@@ -62,7 +61,7 @@ st.markdown("""
             right: 15px;
             font-size: 0.8rem;
             color: #aaa;
-            font-family: 'Archivo', sans-serif;
+            font-family: 'Inter', sans-serif;
             text-align: right;
         }
         
@@ -97,60 +96,40 @@ def get_working_model():
 
 model = get_working_model()
 
-# --- 3. HELPER LIBRARIES ---
+# --- 3. HELPER FUNCTIONS ---
 
-# The "Bouncer": Ruthlessly cleans bad data
 def extract_items(data):
+    """Bouncer: Removes junk data."""
     items = []
-    # Blacklist of junk words
     IGNORE_LIST = ["none", "null", "n/a", "undefined", "", "missing", "optional"]
-
     if isinstance(data, dict):
         for v in data.values(): items.extend(extract_items(v))
     elif isinstance(data, list):
         for item in data: items.extend(extract_items(item))
     elif isinstance(data, str) or isinstance(data, int) or isinstance(data, float):
         clean_text = str(data).strip()
-        # Filter: Must be longer than 2 chars and NOT in blacklist
         if len(clean_text) > 2 and clean_text.lower() not in IGNORE_LIST:
             items.append(clean_text)
-            
     return items
 
-# Random Culinary Phrases
-CULINARY_PHRASES = [
-    "Bon Appétit (French for 'Good Appetite')",
-    "Itadakimasu (Japanese for 'I humbly receive')",
-    "Buen Provecho (Spanish for 'Enjoy your meal')",
-    "Smaklig Måltid (Swedish for 'Tasty Meal')",
-    "Makan (Malay/Indonesian for 'Eat')",
-    "Kali Orexi (Greek for 'Good Appetite')",
-    "Saa Wa Dee (Thai greeting often used before meals)"
-]
-
-# Global Dishes for Surprise Me
 GLOBAL_DISHES = [
     "Shakshuka", "Pad Thai", "Chicken Tikka Masala", "Beef Wellington", "Bibimbap",
     "Moussaka", "Paella", "Ramen", "Tacos al Pastor", "Coq au Vin",
-    "Gnocchi Sorrentina", "Butter Chicken", "Pho", "Falafel Wrap", "Risotto",
-    "Jerk Chicken", "Nasi Goreng", "Pierogi", "Ceviche", "Mapo Tofu"
+    "Gnocchi Sorrentina", "Butter Chicken", "Pho", "Falafel Wrap", "Risotto"
 ]
 
 # --- STATE ---
 if "ingredients" not in st.session_state: st.session_state.ingredients = None
 if "dish_name" not in st.session_state: st.session_state.dish_name = ""
-if "generated_recipe" not in st.session_state: st.session_state.generated_recipe = False
+if "recipe_data" not in st.session_state: st.session_state.recipe_data = None
 if "trigger_search" not in st.session_state: st.session_state.trigger_search = False
-if "recipe_text" not in st.session_state: st.session_state.recipe_text = ""
-if "daily_phrase" not in st.session_state: st.session_state.daily_phrase = random.choice(CULINARY_PHRASES)
 
 # --- 4. UI LAYOUT ---
 
-# HEADER
 c_title, c_surprise = st.columns([4, 1])
 with c_title:
     st.title("Sous")
-    st.caption("Your smart kitchen co-pilot.")
+    st.caption("The adaptive kitchen co-pilot.")
 with c_surprise:
     st.write("") 
     st.write("") 
@@ -158,39 +137,38 @@ with c_surprise:
         st.session_state.dish_name = random.choice(GLOBAL_DISHES)
         st.session_state.trigger_search = True
 
-# INPUT FORM
+# INPUT
 with st.form("input_form"):
     col1, col2 = st.columns([4, 1])
     with col1:
         val = st.session_state.dish_name if st.session_state.trigger_search else ""
-        dish_input = st.text_input("What are you craving today?", value=val, placeholder="e.g. Carbonara, Pancakes...")
+        dish_input = st.text_input("What are you craving?", value=val, placeholder="e.g. Carbonara, Pancakes...")
     with col2:
         servings = st.slider("Servings", 1, 8, 2)
-    submitted = st.form_submit_button("Let's Cook", use_container_width=True)
+    submitted = st.form_submit_button("Start Prep", use_container_width=True)
 
-# LOGIC
+# ANALYSIS LOGIC
 if submitted or st.session_state.trigger_search:
     final_dish = dish_input if submitted else st.session_state.dish_name
-    
     if final_dish:
         st.session_state.dish_name = final_dish
         st.session_state.trigger_search = False
         st.session_state.ingredients = None
-        st.session_state.recipe_text = ""
-        st.session_state.generated_recipe = False
+        st.session_state.recipe_data = None
         
         with st.status(f"👨‍🍳 Analyzing {final_dish}...", expanded=True) as status:
+            # PROMPT UPDATE: Force Physics Essentials into Must Haves
             prompt = f"""
-            I want to cook {final_dish} for {servings} people. 
-            Assume the most authentic, world-class version.
+            Dish: {final_dish} for {servings} people.
             
-            Break down ingredients into a JSON object with these 3 keys:
-            1. "must_haves": The Non-Negotiables.
-            2. "soul": Flavor builders.
-            3. "foundation": Shelf-stable seasonings.
+            Task: Break down ingredients into 3 categories.
+            1. "must_haves": 
+               - Main Proteins/Carbs/Veg.
+               - THE PHYSICS ESSENTIALS: You MUST include Cooking Oil/Fat, Salt, and Water here if the dish needs them.
+            2. "soul": Fresh Herbs, Aromatics, Cheese, Acids (Lemon/Vinegar).
+            3. "pantry": Dried Spices, Sauces, Shelf-stable items.
             
-            IMPORTANT: If a category is empty, return an empty list []. Do NOT write "None".
-            Return ONLY valid JSON. Simple strings only.
+            Output: JSON only. No "None" values.
             """
             try:
                 time.sleep(0.5)
@@ -198,125 +176,147 @@ if submitted or st.session_state.trigger_search:
                 text = response.text.replace("```json", "").replace("```", "").strip()
                 match = re.search(r'\{.*\}', text, re.DOTALL)
                 if match:
-                    clean_json = match.group(0)
-                    data = json.loads(clean_json)
-                    normalized_data = {k.lower(): v for k, v in data.items()}
-                    st.session_state.ingredients = normalized_data
+                    st.session_state.ingredients = json.loads(match.group(0))
                     status.update(label="Mise en place ready.", state="complete", expanded=False)
                 else:
-                    st.error("Sous couldn't read the recipe book. Try again.")
+                    st.error("Could not parse ingredients.")
                     status.update(label="Error", state="error")
             except Exception as e:
                 status.update(label="Connection Error", state="error")
 
-# --- OUTPUT DASHBOARD ---
+# --- DASHBOARD ---
 if st.session_state.ingredients:
     data = st.session_state.ingredients
+    # Normalize keys
+    data = {k.lower(): v for k, v in data.items()}
     
-    # Run the "Bouncer" sanitizer
     list_must = extract_items(data.get('must_haves') or data.get('must_have'))
     list_soul = extract_items(data.get('soul') or data.get('flavor'))
-    list_foundation = extract_items(data.get('foundation') or data.get('pantry'))
+    list_pantry = extract_items(data.get('pantry') or data.get('foundation'))
 
     st.divider()
-    st.markdown(f"### Inventory: {st.session_state.dish_name}")
-    st.caption("Check what you have. We'll adapt the rest.")
+    st.subheader(f"Inventory: {st.session_state.dish_name}")
+    st.caption("Uncheck what is missing. We will adapt the recipe.")
     
     c1, c2, c3 = st.columns(3)
-    
     with c1:
-        st.markdown("**🧱 The Non-Negotiables**")
-        if not list_must: st.write("*(None)*")
-        must_haves = [st.checkbox(str(i), True, key=f"m_{idx}") for idx, i in enumerate(list_must)]
-        
+        st.markdown("**🔴 Non-Negotiables**")
+        must_haves = [st.checkbox(i, True, key=f"m_{x}") for x, i in enumerate(list_must)]
     with c2:
-        st.markdown("**✨ The Soul**")
-        if not list_soul: st.write("*(None)*")
-        soul_missing = []
-        soul_available = []
-        for idx, i in enumerate(list_soul):
-            if st.checkbox(str(i), True, key=f"s_{idx}"): soul_available.append(i)
-            else: soul_missing.append(i)
-                
+        st.markdown("**🟡 Soul & Fresh**")
+        soul_avail = [i for x, i in enumerate(list_soul) if st.checkbox(i, True, key=f"s_{x}")]
+        soul_missing = [i for i in list_soul if i not in soul_avail]
     with c3:
-        st.markdown("**🏗️ The Pantry**")
-        if not list_foundation: st.write("*(None)*")
-        pantry_missing = []
-        pantry_available = []
-        for idx, i in enumerate(list_foundation):
-            if st.checkbox(str(i), True, key=f"p_{idx}"): pantry_available.append(i)
-            else: pantry_missing.append(i)
+        st.markdown("**🟢 Pantry & Spices**")
+        pantry_avail = [i for x, i in enumerate(list_pantry) if st.checkbox(i, True, key=f"p_{x}")]
+        pantry_missing = [i for i in list_pantry if i not in pantry_avail]
 
     st.write("")
     
+    # COOK BUTTON
     if all(must_haves) and list_must:
-        all_missing = soul_missing + pantry_missing
-        confirmed = list_must + soul_available + pantry_available
-        
-        if st.button("Reveal Chef's Recipe", type="primary", use_container_width=True):
-            st.session_state.generated_recipe = True
+        if st.button("Generate Adaptive Recipe", type="primary", use_container_width=True):
             
-        if st.session_state.get("generated_recipe"):
-            if not st.session_state.recipe_text:
-                with st.spinner("👨‍🍳 Drafting the plan..."):
-                    final_prompt = f"""
-                    Act as 'Sous', a world-class chef.
-                    Dish: {st.session_state.dish_name} ({servings} servings).
-                    
-                    INVENTORY:
-                    - CONFIRMED: {confirmed}
-                    - MISSING: {all_missing}
-                    
-                    Structure:
-                    1. **The Vision:** Brief, appetizing description.
-                    2. **The Strategy:** How we adapt to missing items.
-                    3. **Mise en Place:** The confirmed ingredient list with quantities.
-                    4. **The Execution:** Step-by-step instructions.
-                    5. **Chef's Secret:** A pro tip.
-                    """
-                    try:
-                        resp = model.generate_content(final_prompt)
-                        st.session_state.recipe_text = resp.text
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-            st.divider()
-            if all_missing: st.info(f"💡 **Adapting recipe for:** {', '.join(all_missing)}")
+            all_missing = soul_missing + pantry_missing
+            confirmed = list_must + soul_avail + pantry_avail
             
-            if st.session_state.recipe_text:
-                st.markdown(st.session_state.recipe_text)
-                st.divider()
+            with st.spinner("👨‍🍳 Chef is pivoting the strategy..."):
+                final_prompt = f"""
+                Act as 'Sous', a Michelin-star home chef.
+                Dish: {st.session_state.dish_name} ({servings} servings).
                 
-                # --- ACTION BAR ---
-                ac1, ac2, ac3 = st.columns(3)
+                CONTEXT:
+                - CONFIRMED INGREDIENTS: {confirmed} (Use these EXACTLY)
+                - MISSING INGREDIENTS: {all_missing}
                 
-                with ac1:
-                    # COPY (Visual cue, user uses native copy)
-                    st.caption("📋 Copy text above")
+                TASK: Create a structured recipe that SPECIFICALLY adapts to the missing items.
                 
-                with ac2:
-                    # WHATSAPP SHARE
-                    text_to_share = f"Check out this {st.session_state.dish_name} recipe I made with Sous!"
-                    encoded_text = urllib.parse.quote(text_to_share)
-                    st.link_button("💬 Share on WhatsApp", f"https://wa.me/?text={encoded_text}", use_container_width=True)
-                
-                with ac3:
-                    # NEW START
-                    if st.button("🔄 Start New Dish", use_container_width=True):
-                        st.session_state.clear()
-                        st.rerun()
-
-                # RATE (Visual only for now)
-                st.write("")
-                st.caption("Rate this recipe (Feedback is anonymous)")
-                rating = st.slider("Rating", 1, 5, 5, label_visibility="collapsed")
-                if st.button("Submit Rating"):
-                    st.toast("Thank you! Feedback recorded.", icon="⭐")
+                OUTPUT FORMAT (JSON):
+                {{
+                    "meta": {{ "prep_time": "15 mins", "cook_time": "30 mins", "difficulty": "Medium" }},
+                    "pivot_strategy": "A 1-2 sentence explanation of how we are adapting (e.g. 'Since we are missing tomatoes, we will use extra caramelized onions...'). If nothing missing, say 'We have everything needed.'",
+                    "ingredients_list": ["Item 1", "Item 2"],
+                    "steps": ["Step 1...", "Step 2..."],
+                    "chef_tip": "A pro tip."
+                }}
+                """
+                try:
+                    resp = model.generate_content(final_prompt)
+                    clean_resp = resp.text.replace("```json", "").replace("```", "").strip()
+                    # JSON regex to be safe
+                    match = re.search(r'\{.*\}', clean_resp, re.DOTALL)
+                    if match:
+                        st.session_state.recipe_data = json.loads(match.group(0))
+                except Exception as e:
+                    st.error("Chef is overwhelmed. Please try again.")
 
     elif not list_must:
         st.error("⚠️ AI Error: No ingredients found.")
     else:
-        st.error("🛑 Missing Essentials. Cannot cook safely.")
+        st.error("🛑 You are missing Non-Negotiables (Physics Essentials). Cannot cook safely.")
+
+# --- RECIPE CARD DISPLAY ---
+if st.session_state.recipe_data:
+    r = st.session_state.recipe_data
+    
+    st.divider()
+    
+    # 1. HEADER & META
+    st.markdown(f"## 🥘 {st.session_state.dish_name}")
+    
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Prep Time", r['meta'].get('prep_time', '--'))
+    m2.metric("Cook Time", r['meta'].get('cook_time', '--'))
+    m3.metric("Difficulty", r['meta'].get('difficulty', '--'))
+    
+    # 2. THE PIVOT (The Core Value)
+    pivot_msg = r.get('pivot_strategy', '')
+    if pivot_msg and "everything needed" not in pivot_msg.lower():
+        with st.container(border=True):
+            st.markdown(f"**💡 Chef's Pivot Strategy**")
+            st.info(pivot_msg)
+    
+    # 3. INGREDIENTS & STEPS
+    c_ing, c_step = st.columns([1, 2])
+    
+    with c_ing:
+        with st.container(border=True):
+            st.markdown("**🛒 Mise en Place**")
+            for item in r.get('ingredients_list', []):
+                st.markdown(f"- {item}")
+                
+    with c_step:
+        with st.container(border=True):
+            st.markdown("**🔥 Instructions**")
+            for idx, step in enumerate(r.get('steps', [])):
+                st.markdown(f"**{idx+1}.** {step}")
+            
+            st.markdown("---")
+            st.caption(f"✨ **Chef's Secret:** {r.get('chef_tip', '')}")
+
+    # 4. ACTION BAR (Copy & Share)
+    st.write("")
+    a1, a2 = st.columns(2)
+    with a1:
+        # WhatsApp
+        recipe_str = f"Cooking {st.session_state.dish_name}!\n\nStrategy: {pivot_msg}"
+        encoded = urllib.parse.quote(recipe_str)
+        st.link_button("💬 Share Pivot on WhatsApp", f"https://wa.me/?text={encoded}", use_container_width=True)
+    with a2:
+        if st.button("🔄 Start New Dish", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+            
+    # 5. COPY SECTION (The functional copy)
+    with st.expander("📋 Copy Full Recipe Text"):
+        # Construct plain text for copying
+        copy_text = f"{st.session_state.dish_name}\n\nSTRATEGY: {pivot_msg}\n\nINGREDIENTS:\n"
+        for i in r.get('ingredients_list', []): copy_text += f"- {i}\n"
+        copy_text += "\nINSTRUCTIONS:\n"
+        for i, s in enumerate(r.get('steps', [])): copy_text += f"{i+1}. {s}\n"
+        
+        st.code(copy_text, language=None)
+
 
 # --- FOOTER ---
-st.markdown(f'<div class="footer">{st.session_state.daily_phrase} <br> Powered by Gemini</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer">Powered by Gemini</div>', unsafe_allow_html=True)
