@@ -265,10 +265,31 @@ if submitted or st.session_state.trigger_search:
         st.session_state.toast_shown = False
         
         with st.spinner(f"Processing Request: {final_dish}..."):
-            prompt = f"Dish: {final_dish} for {servings}. Break into 'core' (Non-negotiable) and 'character' (Negotiable). JSON only."
+            # RESTORED: THE BRAIN
+            prompt = f"""
+            Dish: {final_dish} for {servings} people.
+            
+            Task: Break down ingredients into exactly 2 categories.
+            
+            OUTPUT JSON STRUCTURE ONLY:
+            {{
+                "core": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
+                "character": ["Ingredient 4", "Ingredient 5"]
+            }}
+
+            RULES:
+            1. "core": Non-Negotiables (Proteins, Rice/Pasta, Oil, Salt, Water).
+            2. "character": Negotiables (Spices, Herbs, Garnishes).
+            3. Do NOT include descriptions or headers inside the list. Just ingredient names.
+            4. No "None" or null values.
+            """
+            
             data = robust_api_call(prompt)
-            if isinstance(data, dict): st.session_state.ingredients = data
-            else: st.error("System Failure: Unable to parse recipe data.")
+            
+            if isinstance(data, dict):
+                st.session_state.ingredients = data
+            else:
+                st.error(f"System Failure: Unable to parse recipe data. Details: {data}")
 
 # DASHBOARD
 if st.session_state.ingredients:
@@ -316,9 +337,23 @@ if st.session_state.ingredients:
             confirmed = list_core + character_avail
             with st.spinner("Compiling Instructions..."):
                 final_prompt = f"""
-                Act as 'Sous'. Dish: {st.session_state.dish_name} ({servings} servings).
-                Confirmed: {confirmed}. Missing: {all_missing}.
-                JSON Output: {{ "meta": {{ "prep_time": "15m", "cook_time": "30m", "difficulty": "Easy" }}, "pivot_strategy": "Strategy...", "ingredients_list": ["list..."], "steps": ["step 1...", "step 2..."], "chef_tip": "Tip..." }}
+                Act as 'Sous', a Michelin-star home chef.
+                Dish: {st.session_state.dish_name} ({servings} servings).
+                
+                CONTEXT:
+                - CONFIRMED INGREDIENTS: {confirmed}
+                - MISSING INGREDIENTS: {all_missing}
+                
+                TASK: Create a structured recipe.
+                
+                OUTPUT FORMAT (JSON):
+                {{
+                    "meta": {{ "prep_time": "15 mins", "cook_time": "30 mins", "difficulty": "Medium" }},
+                    "pivot_strategy": "Explain how we adapt to missing items. If nothing missing, say 'Full Pantry'",
+                    "ingredients_list": ["Item 1", "Item 2"],
+                    "steps": ["Step 1...", "Step 2..."],
+                    "chef_tip": "A pro tip."
+                }}
                 """
                 r_data = robust_api_call(final_prompt)
                 if isinstance(r_data, dict): st.session_state.recipe_data = r_data
