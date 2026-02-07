@@ -78,7 +78,7 @@ else:
                 animation: glitch 0.5s infinite steps(1);
             }
             
-            /* BUTTONS */
+            /* BUTTONS: Neon Green */
             div.stButton > button, div[data-testid="stForm"] button {
                 background-color: #000 !important;
                 color: #00FF00 !important;
@@ -118,10 +118,10 @@ else:
         </style>
     """, unsafe_allow_html=True)
     
-    # MARQUEE FIX: Added !important to color:black to force visibility
+    # MARQUEE FIX: BLUE BACKGROUND (#3300FF) + WHITE TEXT
     st.markdown("""
-        <div style="background: #00FF00; overflow: hidden; white-space: nowrap; border-bottom: 3px solid #000; margin-top: -30px; margin-bottom: 20px;">
-            <div style="display: inline-block; animation: marquee 10s linear infinite; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1.2rem; color: #000000 !important; -webkit-text-fill-color: #000000 !important; padding: 10px;">
+        <div style="background: #3300FF; overflow: hidden; white-space: nowrap; border-bottom: 3px solid #000; margin-top: -30px; margin-bottom: 20px;">
+            <div style="display: inline-block; animation: marquee 10s linear infinite; font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1.2rem; color: #FFFFFF !important; padding: 10px;">
                 NO CAP /// JUST COOKING /// IT'S GIVING MICHELIN /// MAIN CHARACTER ENERGY /// NO CAP /// JUST COOKING /// IT'S GIVING MICHELIN
             </div>
         </div>
