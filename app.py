@@ -15,13 +15,26 @@ st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 # --- 1. VIBE CONTROLLER ---
 c_ph, c_toggle = st.columns([6, 1])
 with c_toggle:
-    vibe_mode = st.toggle("⚡ Brutal Mode")
+    # RENAMED: Brutal -> Vibe Mode
+    vibe_mode = st.toggle("✨ Vibe Mode")
 
 # --- 2. DYNAMIC DESIGN SYSTEM ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+    
+    /* ANIMATIONS */
+    @keyframes marquee {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+    }
+    
+    @keyframes glitch {
+        0% { text-shadow: 4px 4px 0px #FF00FF; }
+        50% { text-shadow: -4px -4px 0px #00FFFF; }
+        100% { text-shadow: 4px 4px 0px #FF00FF; }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -46,75 +59,82 @@ if not vibe_mode:
     """, unsafe_allow_html=True)
 
 else:
-    # === NEO-BRUTAL MODE (The Raw Code) ===
+    # === VIBE MODE (Gen Z / Neo-Brutal) ===
     st.markdown("""
         <style>
-            /* 1. BACKGROUND: Pitch Black with Dot Grid */
+            /* 1. BACKGROUND: Pitch Black + Dot Grid */
             .stApp {
-                background-color: #050505;
-                background-image: radial-gradient(#333 1px, transparent 0);
-                background-size: 20px 20px;
+                background-color: #000;
+                background-image: radial-gradient(#222 1px, transparent 0);
+                background-size: 30px 30px;
             }
             
-            /* 2. TEXT: Force White/Monospace */
+            /* 2. TEXT: Space Mono + White */
             html, body, [class*="css"], p, label, div, span {
                 font-family: 'Space Mono', monospace !important;
                 color: #ffffff !important;
             }
             
-            /* 3. TITLE: Hard Glitch Shadow */
+            /* 3. TITLE: Glitch Effect */
             h1 { 
                 font-family: 'Space Mono', monospace !important; 
                 font-weight: 700 !important;
                 text-transform: uppercase;
-                letter-spacing: -0.05em;
-                font-size: 3.5rem !important;
+                font-size: 4rem !important;
                 color: #fff !important;
-                text-shadow: 4px 4px 0px #FF00FF; /* Magenta Hard Shadow */
+                animation: glitch 0.5s infinite steps(1); /* twitchy animation */
             }
             
-            /* Headers */
-            h2, h3, h4 { color: #fff !important; font-weight: 700 !important; }
-            
-            /* CHECKBOX FIX */
-            div[data-testid="stCheckbox"] label span { color: #fff !important; }
-            
-            /* 4. BUTTONS: Sharp Blocks, Neon Borders, Hard Shadows */
+            /* 4. BUTTONS: The "Twitchy" Block */
             div.stButton > button, div[data-testid="stForm"] button {
                 background-color: #000 !important;
-                color: #00FF00 !important; /* Neon Green Text */
-                border: 2px solid #00FF00 !important;
-                border-radius: 0px !important; /* SHARP */
+                color: #00FF00 !important;
+                border: 3px solid #00FF00 !important;
+                border-radius: 0px !important;
                 font-family: 'Space Mono', monospace !important;
                 font-weight: 700;
-                text-transform: uppercase;
-                box-shadow: 6px 6px 0px #00FF00 !important; /* Hard Shadow */
+                box-shadow: 8px 8px 0px #00FF00 !important;
                 transition: all 0.1s;
+                text-transform: uppercase;
             }
             
             div.stButton > button:hover, div[data-testid="stForm"] button:hover {
-                transform: translate(2px, 2px);
-                box-shadow: 2px 2px 0px #00FF00 !important;
-                color: #000 !important;
-                background-color: #00FF00 !important;
+                transform: translate(4px, 4px); /* Moves down-right */
+                box-shadow: 4px 4px 0px #FF00FF !important; /* Shadow changes color */
+                border-color: #FF00FF !important;
+                color: #FF00FF !important;
             }
 
-            /* Inputs (Sharp & Raw) */
+            /* Inputs: Terminal Style */
             input {
                 background: #000 !important;
-                border: 2px solid #333 !important;
-                color: #fff !important;
+                border: 2px solid #fff !important;
+                border-bottom: 5px solid #fff !important;
+                color: #00FF00 !important;
                 border-radius: 0px !important;
                 font-family: 'Space Mono', monospace !important;
             }
             
-            /* Toast */
-            div[data-testid="stToast"] {
+            /* Containers */
+            div[data-testid="stVerticalBlock"] {
+                gap: 1.5rem;
+            }
+            
+            /* Expander/Containers borders */
+            div[data-testid="stExpander"], div[data-testid="stForm"] {
+                border: 2px solid #333 !important;
                 border-radius: 0px !important;
-                border: 2px solid #fff !important;
-                background-color: #000 !important;
             }
         </style>
+    """, unsafe_allow_html=True)
+    
+    # MARQUEE BANNER (Pure Gen Z Chaos)
+    st.markdown("""
+        <div style="background: #00FF00; overflow: hidden; white-space: nowrap; border-bottom: 3px solid #000; margin-top: -30px; margin-bottom: 20px;">
+            <div style="display: inline-block; animation: marquee 10s linear infinite; font-family: 'Space Mono'; font-weight: bold; font-size: 1.2rem; color: #000; padding: 10px;">
+                SYSTEM OVERRIDE /// KITCHEN OS v9.0 /// NO CAP /// JUST COOKING /// LET HIM COOK /// SYSTEM OVERRIDE /// KITCHEN OS v9.0 /// NO CAP /// JUST COOKING
+            </div>
+        </div>
     """, unsafe_allow_html=True)
 
 # --- 3. CONFIGURATION & LOGIC ---
@@ -172,12 +192,13 @@ def robust_api_call(prompt):
 
 def copy_to_clipboard_button(text, is_vibe):
     escaped_text = text.replace("\n", "\\n").replace("\"", "\\\"")
-    # Dynamic styling for the component
     if is_vibe:
-        # Neo Brutal Style for Component
+        # Vibe Mode: Black Button, Green Text, Hard Shadow
         btn_style = "background-color: #000; color: #00FF00; border: 2px solid #00FF00; box-shadow: 4px 4px 0px #00FF00; font-family: 'Space Mono', monospace; border-radius: 0px;"
+        btn_text = "SAVE THIS DRIP"
     else:
         btn_style = "background-color: #f0f0f0; color: #333; border-radius: 8px; border: 1px solid #ccc; font-family: 'Archivo';"
+        btn_text = "Copy Recipe"
         
     components.html(
         f"""
@@ -187,10 +208,10 @@ def copy_to_clipboard_button(text, is_vibe):
             const str = "{escaped_text}";
             const el = document.createElement('textarea');
             el.value = str; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-            const btn = document.getElementById("copyBtn"); btn.innerText = "COPIED!"; setTimeout(() => {{ btn.innerText = "COPY RECIPE"; }}, 2000);
+            const btn = document.getElementById("copyBtn"); btn.innerText = "COPIED!"; setTimeout(() => {{ btn.innerText = "{btn_text}"; }}, 2000);
         }}
         </script>
-        <button id="copyBtn" onclick="copyToClipboard()" style="{btn_style} padding: 10px 20px; font-size: 14px; cursor: pointer; width: 100%; font-weight: 700; text-transform: uppercase;">COPY RECIPE</button>
+        <button id="copyBtn" onclick="copyToClipboard()" style="{btn_style} padding: 10px 20px; font-size: 14px; cursor: pointer; width: 100%; font-weight: 700; text-transform: uppercase;">{btn_text}</button>
         """, height=60
     )
 
@@ -199,9 +220,13 @@ def speak_text_button(text, is_vibe):
     if is_vibe:
         btn_play = "background-color: #000; color: #00FF00; border: 2px solid #00FF00; box-shadow: 4px 4px 0px #00FF00; font-family: 'Space Mono', monospace; border-radius: 0px;"
         btn_stop = "background-color: #000; color: #FF00FF; border: 2px solid #FF00FF; box-shadow: 4px 4px 0px #FF00FF; font-family: 'Space Mono', monospace; border-radius: 0px;"
+        txt_play = "▶ SPILL THE TEA"
+        txt_stop = "⏹ MUTE"
     else:
         btn_play = "background-color: #ffffff; color: #000; border-radius: 8px; border: 1px solid #000; font-family: 'Archivo';"
         btn_stop = "background-color: #f0f0f0; color: #333; border-radius: 8px; border: 1px solid #ccc; font-family: 'Archivo';"
+        txt_play = "▶ Read"
+        txt_stop = "⏹ Stop"
 
     components.html(
         f"""
@@ -212,8 +237,8 @@ def speak_text_button(text, is_vibe):
         function stop() {{ synth.cancel(); }}
         </script>
         <div style="display: flex; gap: 15px; margin-top: 15px;">
-            <button onclick="play()" style="{btn_play} flex: 1; padding: 10px 15px; font-size: 13px; cursor: pointer; font-weight: 700; text-transform: uppercase;">▶ READ</button>
-            <button onclick="stop()" style="{btn_stop} flex: 0 0 auto; padding: 10px 15px; font-size: 13px; cursor: pointer; font-weight: 700; text-transform: uppercase;">⏹ STOP</button>
+            <button onclick="play()" style="{btn_play} flex: 1; padding: 10px 15px; font-size: 13px; cursor: pointer; font-weight: 700; text-transform: uppercase;">{txt_play}</button>
+            <button onclick="stop()" style="{btn_stop} flex: 0 0 auto; padding: 10px 15px; font-size: 13px; cursor: pointer; font-weight: 700; text-transform: uppercase;">{txt_stop}</button>
         </div>
         """, height=70
     )
@@ -231,8 +256,8 @@ if "toast_shown" not in st.session_state: st.session_state.toast_shown = False
 c_title, c_surprise = st.columns([4, 1])
 with c_title:
     if vibe_mode:
-        st.title("SOUS") # No Planet. Just Text.
-        st.caption("THE ADAPTIVE KITCHEN SYSTEM.") # Uppercase caption
+        st.title("SOUS") 
+        st.caption("THE ADAPTIVE KITCHEN SYSTEM.") 
     else:
         st.title("Sous")
         st.caption("The adaptive kitchen co-pilot.")
@@ -265,31 +290,16 @@ if submitted or st.session_state.trigger_search:
         st.session_state.toast_shown = False
         
         with st.spinner(f"Processing Request: {final_dish}..."):
-            # RESTORED: THE BRAIN
             prompt = f"""
             Dish: {final_dish} for {servings} people.
-            
             Task: Break down ingredients into exactly 2 categories.
-            
             OUTPUT JSON STRUCTURE ONLY:
-            {{
-                "core": ["Ingredient 1", "Ingredient 2", "Ingredient 3"],
-                "character": ["Ingredient 4", "Ingredient 5"]
-            }}
-
-            RULES:
-            1. "core": Non-Negotiables (Proteins, Rice/Pasta, Oil, Salt, Water).
-            2. "character": Negotiables (Spices, Herbs, Garnishes).
-            3. Do NOT include descriptions or headers inside the list. Just ingredient names.
-            4. No "None" or null values.
+            {{ "core": ["Ing 1", "Ing 2"], "character": ["Ing 3", "Ing 4"] }}
+            RULES: 1. Core = Non-negotiables. 2. Character = Spices/Herbs. 3. No Nulls.
             """
-            
             data = robust_api_call(prompt)
-            
-            if isinstance(data, dict):
-                st.session_state.ingredients = data
-            else:
-                st.error(f"System Failure: Unable to parse recipe data. Details: {data}")
+            if isinstance(data, dict): st.session_state.ingredients = data
+            else: st.error(f"System Failure. Details: {data}")
 
 # DASHBOARD
 if st.session_state.ingredients:
@@ -313,8 +323,8 @@ if st.session_state.ingredients:
     
     # Dynamic Headers
     if vibe_mode:
-        h_core = "> CORE_COMPONENTS (REQUIRED)"
-        h_char = "> FLAVOR_MATRIX (OPTIONAL)"
+        h_core = "> CORE_FILES (NON_NEGOTIABLE)"
+        h_char = "> DLC_PACK (OPTIONAL_VIBES)"
     else:
         h_core = "🧱 The Core (Non-Negotiables)"
         h_char = "✨ Flavor & Substitutes"
@@ -336,25 +346,48 @@ if st.session_state.ingredients:
             all_missing = character_missing
             confirmed = list_core + character_avail
             with st.spinner("Compiling Instructions..."):
-                final_prompt = f"""
-                Act as 'Sous', a Michelin-star home chef.
-                Dish: {st.session_state.dish_name} ({servings} servings).
                 
-                CONTEXT:
-                - CONFIRMED INGREDIENTS: {confirmed}
-                - MISSING INGREDIENTS: {all_missing}
-                
-                TASK: Create a structured recipe.
-                
-                OUTPUT FORMAT (JSON):
-                {{
-                    "meta": {{ "prep_time": "15 mins", "cook_time": "30 mins", "difficulty": "Medium" }},
-                    "pivot_strategy": "Explain how we adapt to missing items. If nothing missing, say 'Full Pantry'",
-                    "ingredients_list": ["Item 1", "Item 2"],
-                    "steps": ["Step 1...", "Step 2..."],
-                    "chef_tip": "A pro tip."
-                }}
-                """
+                # --- DYNAMIC PROMPTING (THE BRAIN) ---
+                if vibe_mode:
+                    # GEN Z PERSONA
+                    final_prompt = f"""
+                    Act as 'Chef Z', a chaotic but skilled Gen Z food influencer.
+                    Dish: {st.session_state.dish_name} ({servings} servings).
+                    Context: Confirmed: {confirmed}. Missing: {all_missing}.
+                    
+                    TONE:
+                    - Use slang (no cap, bet, bussin, yeet, aesthetic, main character energy).
+                    - Be high energy but accurate with cooking times.
+                    - Format instructions like a viral thread.
+                    
+                    OUTPUT JSON:
+                    {{
+                        "meta": {{ "prep_time": "15m", "cook_time": "30m", "difficulty": "Hard AF" }},
+                        "pivot_strategy": "Explain strategy using slang.",
+                        "ingredients_list": ["Item 1", "Item 2"],
+                        "steps": ["Step 1...", "Step 2..."],
+                        "chef_tip": "A savage pro tip."
+                    }}
+                    """
+                else:
+                    # MICHELIN PERSONA (DEFAULT)
+                    final_prompt = f"""
+                    Act as 'Sous', a Michelin-star home chef.
+                    Dish: {st.session_state.dish_name} ({servings} servings).
+                    Context: Confirmed: {confirmed}. Missing: {all_missing}.
+                    
+                    TONE: Professional, structured, encouraging.
+                    
+                    OUTPUT JSON:
+                    {{
+                        "meta": {{ "prep_time": "15 mins", "cook_time": "30 mins", "difficulty": "Medium" }},
+                        "pivot_strategy": "Explain pivot strategy clearly.",
+                        "ingredients_list": ["Item 1", "Item 2"],
+                        "steps": ["Step 1...", "Step 2..."],
+                        "chef_tip": "A professional tip."
+                    }}
+                    """
+
                 r_data = robust_api_call(final_prompt)
                 if isinstance(r_data, dict): st.session_state.recipe_data = r_data
                 else: st.error("System Overload.")
