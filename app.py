@@ -15,7 +15,6 @@ st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
 # --- 1. VIBE CONTROLLER ---
 c_ph, c_toggle = st.columns([6, 1])
 with c_toggle:
-    # RENAMED: Brutal -> Vibe Mode
     vibe_mode = st.toggle("✨ Vibe Mode")
 
 # --- 2. DYNAMIC DESIGN SYSTEM ---
@@ -45,7 +44,6 @@ if not vibe_mode:
             html, body, [class*="css"] { font-family: 'Archivo', sans-serif; }
             h1 { font-family: 'Archivo', sans-serif !important; font-weight: 700; letter-spacing: -0.02em; }
             
-            /* Buttons (Systemic) */
             div.stButton > button, div[data-testid="stForm"] button {
                 background-color: #000 !important; color: #fff !important; border-radius: 8px;
                 text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; border: none;
@@ -62,30 +60,24 @@ else:
     # === VIBE MODE (Gen Z / Neo-Brutal) ===
     st.markdown("""
         <style>
-            /* 1. BACKGROUND: Pitch Black + Dot Grid */
             .stApp {
                 background-color: #000;
                 background-image: radial-gradient(#222 1px, transparent 0);
                 background-size: 30px 30px;
             }
-            
-            /* 2. TEXT: Space Mono + White */
             html, body, [class*="css"], p, label, div, span {
                 font-family: 'Space Mono', monospace !important;
                 color: #ffffff !important;
             }
-            
-            /* 3. TITLE: Glitch Effect */
             h1 { 
                 font-family: 'Space Mono', monospace !important; 
                 font-weight: 700 !important;
                 text-transform: uppercase;
                 font-size: 4rem !important;
                 color: #fff !important;
-                animation: glitch 0.5s infinite steps(1); /* twitchy animation */
+                animation: glitch 0.5s infinite steps(1);
             }
             
-            /* 4. BUTTONS: The "Twitchy" Block */
             div.stButton > button, div[data-testid="stForm"] button {
                 background-color: #000 !important;
                 color: #00FF00 !important;
@@ -97,15 +89,13 @@ else:
                 transition: all 0.1s;
                 text-transform: uppercase;
             }
-            
             div.stButton > button:hover, div[data-testid="stForm"] button:hover {
-                transform: translate(4px, 4px); /* Moves down-right */
-                box-shadow: 4px 4px 0px #FF00FF !important; /* Shadow changes color */
+                transform: translate(4px, 4px);
+                box-shadow: 4px 4px 0px #FF00FF !important;
                 border-color: #FF00FF !important;
                 color: #FF00FF !important;
             }
 
-            /* Inputs: Terminal Style */
             input {
                 background: #000 !important;
                 border: 2px solid #fff !important;
@@ -114,25 +104,17 @@ else:
                 border-radius: 0px !important;
                 font-family: 'Space Mono', monospace !important;
             }
-            
-            /* Containers */
-            div[data-testid="stVerticalBlock"] {
-                gap: 1.5rem;
-            }
-            
-            /* Expander/Containers borders */
+            div[data-testid="stVerticalBlock"] { gap: 1.5rem; }
             div[data-testid="stExpander"], div[data-testid="stForm"] {
-                border: 2px solid #333 !important;
-                border-radius: 0px !important;
+                border: 2px solid #333 !important; border-radius: 0px !important;
             }
         </style>
     """, unsafe_allow_html=True)
     
-    # MARQUEE BANNER (Pure Gen Z Chaos)
     st.markdown("""
         <div style="background: #00FF00; overflow: hidden; white-space: nowrap; border-bottom: 3px solid #000; margin-top: -30px; margin-bottom: 20px;">
             <div style="display: inline-block; animation: marquee 10s linear infinite; font-family: 'Space Mono'; font-weight: bold; font-size: 1.2rem; color: #000; padding: 10px;">
-                SYSTEM OVERRIDE /// KITCHEN OS v9.0 /// NO CAP /// JUST COOKING /// LET HIM COOK /// SYSTEM OVERRIDE /// KITCHEN OS v9.0 /// NO CAP /// JUST COOKING
+                NO CAP /// JUST COOKING /// IT'S GIVING MICHELIN /// MAIN CHARACTER ENERGY /// NO CAP /// JUST COOKING /// IT'S GIVING MICHELIN
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -193,7 +175,6 @@ def robust_api_call(prompt):
 def copy_to_clipboard_button(text, is_vibe):
     escaped_text = text.replace("\n", "\\n").replace("\"", "\\\"")
     if is_vibe:
-        # Vibe Mode: Black Button, Green Text, Hard Shadow
         btn_style = "background-color: #000; color: #00FF00; border: 2px solid #00FF00; box-shadow: 4px 4px 0px #00FF00; font-family: 'Space Mono', monospace; border-radius: 0px;"
         btn_text = "SAVE THIS DRIP"
     else:
@@ -257,7 +238,7 @@ c_title, c_surprise = st.columns([4, 1])
 with c_title:
     if vibe_mode:
         st.title("SOUS") 
-        st.caption("THE ADAPTIVE KITCHEN SYSTEM.") 
+        st.caption("BRUH. STOP ORDERING TAKEOUT.") # <--- THE "BRUH" UPDATE
     else:
         st.title("Sous")
         st.caption("The adaptive kitchen co-pilot.")
@@ -274,10 +255,17 @@ with st.form("input_form"):
     col1, col2 = st.columns([4, 1])
     with col1:
         val = st.session_state.dish_name if st.session_state.trigger_search else ""
-        dish_input = st.text_input("What are you craving?", value=val, placeholder="e.g. Carbonara...")
+        if vibe_mode:
+            dish_input = st.text_input("What's living rent-free in your head?", value=val, placeholder="e.g. Carbonara (It slaps)...")
+        else:
+            dish_input = st.text_input("What are you craving?", value=val, placeholder="e.g. Carbonara...")
     with col2:
         servings = st.slider("Servings", 1, 8, 2)
-    submitted = st.form_submit_button("Let's Cook", use_container_width=True)
+    
+    if vibe_mode:
+        submitted = st.form_submit_button("🔥 BET / LET'S COOK", use_container_width=True)
+    else:
+        submitted = st.form_submit_button("Let's Cook", use_container_width=True)
 
 # LOGIC
 if submitted or st.session_state.trigger_search:
@@ -289,7 +277,7 @@ if submitted or st.session_state.trigger_search:
         st.session_state.recipe_data = None
         st.session_state.toast_shown = False
         
-        with st.spinner(f"Processing Request: {final_dish}..."):
+        with st.spinner(f"Loading Assets for: {final_dish}..."):
             prompt = f"""
             Dish: {final_dish} for {servings} people.
             Task: Break down ingredients into exactly 2 categories.
@@ -304,7 +292,10 @@ if submitted or st.session_state.trigger_search:
 # DASHBOARD
 if st.session_state.ingredients:
     if not st.session_state.toast_shown:
-        st.toast("SYSTEM READY: MISE EN PLACE INITIATED.", icon="🟩")
+        if vibe_mode:
+            st.toast("W. WE ARE SO BACK.", icon="🟩")
+        else:
+            st.toast("Mise en place ready.", icon="🧑‍🍳")
         st.session_state.toast_shown = True
 
     data = st.session_state.ingredients
@@ -323,8 +314,8 @@ if st.session_state.ingredients:
     
     # Dynamic Headers
     if vibe_mode:
-        h_core = "> CORE_FILES (NON_NEGOTIABLE)"
-        h_char = "> DLC_PACK (OPTIONAL_VIBES)"
+        h_core = "> THE GOATS (NO CAP / REQUIRED)"
+        h_char = "> THE RIZZ (FLAVOR DRIP)"
     else:
         h_core = "🧱 The Core (Non-Negotiables)"
         h_char = "✨ Flavor & Substitutes"
@@ -335,38 +326,51 @@ if st.session_state.ingredients:
         core_checks = [st.checkbox(str(i), True, key=f"c_{x}") for x, i in enumerate(list_core)]
     with c2:
         st.markdown(f"**{h_char}**")
-        st.caption("*(Uncheck to substitute)*")
+        st.caption("*(Uncheck if you are delulu)*")
         character_avail = [i for x, i in enumerate(list_character) if st.checkbox(str(i), True, key=f"ch_{x}")]
         character_missing = [i for i in list_character if i not in character_avail]
 
     st.write("")
     
     if all(core_checks) and list_core:
-        if st.button("Generate Chef's Recipe", type="primary", use_container_width=True):
+        if vibe_mode:
+            btn_gen = "🚀 FULL SEND (GENERATE RECIPE)"
+        else:
+            btn_gen = "Generate Chef's Recipe"
+            
+        if st.button(btn_gen, type="primary", use_container_width=True):
             all_missing = character_missing
             confirmed = list_core + character_avail
-            with st.spinner("Compiling Instructions..."):
+            with st.spinner("Cooking..."):
                 
                 # --- DYNAMIC PROMPTING (THE BRAIN) ---
                 if vibe_mode:
                     # GEN Z PERSONA
                     final_prompt = f"""
-                    Act as 'Chef Z', a chaotic but skilled Gen Z food influencer.
+                    Act as 'Chef Z', a chaotic Gen Z food influencer.
                     Dish: {st.session_state.dish_name} ({servings} servings).
                     Context: Confirmed: {confirmed}. Missing: {all_missing}.
                     
-                    TONE:
-                    - Use slang (no cap, bet, bussin, yeet, aesthetic, main character energy).
-                    - Be high energy but accurate with cooking times.
-                    - Format instructions like a viral thread.
+                    MANDATORY SLANG TO USE:
+                    - Rizz (Flavor/Charisma)
+                    - No Cap (Truth)
+                    - Bussin (Tastes good)
+                    - Bet (Yes/Okay)
+                    - Glow-up (Cooking process)
+                    - Era (e.g., In my spicy era)
+                    - Serving (Plating)
+                    - Slaps (Good)
+                    - Sus (If missing ingredients)
+                    - Delulu (If user thinks they can cook without basics)
+                    - Ghosting (If flavor is missing)
                     
                     OUTPUT JSON:
                     {{
-                        "meta": {{ "prep_time": "15m", "cook_time": "30m", "difficulty": "Hard AF" }},
-                        "pivot_strategy": "Explain strategy using slang.",
+                        "meta": {{ "prep_time": "15m", "cook_time": "30m", "difficulty": "Valid" }},
+                        "pivot_strategy": "Explain strategy using slang (e.g. 'We are entering our savory era').",
                         "ingredients_list": ["Item 1", "Item 2"],
                         "steps": ["Step 1...", "Step 2..."],
-                        "chef_tip": "A savage pro tip."
+                        "chef_tip": "A savage pro tip (e.g. 'Don't be a simp for salt')."
                     }}
                     """
                 else:
@@ -392,8 +396,16 @@ if st.session_state.ingredients:
                 if isinstance(r_data, dict): st.session_state.recipe_data = r_data
                 else: st.error("System Overload.")
 
-    elif not list_core: st.error("ERROR: No ingredients found.")
-    else: st.error("CRITICAL: Missing Core Ingredients.")
+    elif not list_core: 
+        if vibe_mode:
+             st.error("⚠️ BRUH. IT'S GIVING EMPTY. GO TOUCH GRASS & BUY FOOD.")
+        else:
+             st.error("ERROR: No ingredients found.")
+    else: 
+        if vibe_mode:
+            st.error("💀 NAH. YOU NEED THE OGs. STOP BEING DELULU.")
+        else:
+            st.error("CRITICAL: Missing Core Ingredients.")
 
 # RECIPE CARD
 if st.session_state.recipe_data:
@@ -411,23 +423,27 @@ if st.session_state.recipe_data:
 
     if show_strategy:
         with st.container(border=True):
-            st.markdown(f"**STRATEGY**")
+            if vibe_mode: st.markdown(f"**VIBE CHECK**")
+            else: st.markdown(f"**STRATEGY**")
             st.info(pivot_msg)
     
     c_ing, c_step = st.columns([1, 2])
     with c_ing:
         with st.container(border=True):
-            st.markdown("**INVENTORY**")
+            if vibe_mode: st.markdown("**THE LOOT DROP**")
+            else: st.markdown("**INVENTORY**")
             for item in r.get('ingredients_list', []): st.markdown(f"- {item}")
                 
     with c_step:
         with st.container(border=True):
-            st.markdown("**EXECUTION**")
+            if vibe_mode: st.markdown("**THE TUTORIAL**")
+            else: st.markdown("**EXECUTION**")
             for idx, step in enumerate(r.get('steps', [])):
                 clean_step = re.sub(r'^[\d\.\s\*\-]+', '', step)
                 st.markdown(f"**{idx+1}.** {clean_step}")
             st.markdown("---")
-            st.caption(f"**SECRET:** {r.get('chef_tip', '')}")
+            if vibe_mode: st.caption(f"**CHEAT CODE:** {r.get('chef_tip', '')}")
+            else: st.caption(f"**SECRET:** {r.get('chef_tip', '')}")
             
             # AUDIO
             speech_text = f"Recipe for {st.session_state.dish_name}. "
@@ -455,7 +471,7 @@ if st.session_state.recipe_data:
         encoded_wa = urllib.parse.quote(share_text)
         # Dynamic WA Button
         if vibe_mode:
-            st.markdown(f"""<a href="https://wa.me/?text={encoded_wa}" target="_blank" style="text-decoration: none;"><button style="width: 100%; background-color: #000; color: #00FF00; border: 2px solid #00FF00; box-shadow: 4px 4px 0px #00FF00; font-family: 'Space Mono'; padding: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;">💬 WhatsApp Share</button></a>""", unsafe_allow_html=True)
+            st.markdown(f"""<a href="https://wa.me/?text={encoded_wa}" target="_blank" style="text-decoration: none;"><button style="width: 100%; background-color: #000; color: #00FF00; border: 2px solid #00FF00; box-shadow: 4px 4px 0px #00FF00; font-family: 'Space Mono'; padding: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;">💬 SPILL THE TEA (WA)</button></a>""", unsafe_allow_html=True)
         else:
             st.link_button("💬 Share Recipe on WhatsApp", f"https://wa.me/?text={encoded_wa}", use_container_width=True)
         
