@@ -18,7 +18,7 @@ c_ph, c_toggle = st.columns([6, 1])
 with c_toggle:
     vibe_mode = st.toggle("✨ Vibe Mode")
 
-# --- 2. DYNAMIC DESIGN SYSTEM ---
+# --- 2. CSS STYLING (THE FIXED VERSION) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;600;700&display=swap');
@@ -44,8 +44,8 @@ else:
         <style>
             .stApp { background-color: #000; background-image: radial-gradient(#222 1px, transparent 0); background-size: 30px 30px; }
             
-            /* GLOBAL FONT OVERRIDE (BUT EXCLUDING ICONS) */
-            html, body, p, h1, h2, h3, div, span, label, input, button { 
+            /* TARGETED FONT OVERRIDE (Leaves Icons Alone) */
+            h1, h2, h3, p, div, span, label, input, button, textarea { 
                 font-family: 'Space Mono', monospace !important; 
                 color: #ffffff !important; 
             }
@@ -76,16 +76,16 @@ else:
                 border-bottom: 5px solid #fff !important; color: #00FF00 !important; border-radius: 0px !important; 
             }
             
-            /* EXPANDER FIX (THE "ARROW_RIGHT" BUG KILLER) */
+            /* EXPANDER STYLING */
             div[data-testid="stExpander"] {
                 background-color: #000 !important; border: 2px solid #00FF00 !important; border-radius: 0px !important;
             }
-            div[data-testid="stExpander"] details summary p {
-                font-family: 'Space Mono', monospace !important; font-size: 1.2rem !important; color: #00FF00 !important;
+            div[data-testid="stExpander"] details summary {
+                color: #00FF00 !important;
             }
-            /* Reset icon font family so arrows render as arrows, not text */
+            /* Fix the Arrow Icon by explicitly resetting its font */
             div[data-testid="stExpander"] details summary svg {
-                font-family: sans-serif !important; fill: #00FF00 !important;
+                fill: #00FF00 !important;
             }
 
             /* TOAST */
@@ -133,17 +133,20 @@ def clean_list(raw_list):
 
 def robust_api_call(prompt, image=None):
     try:
-        if image: response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json"})
-        else: response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-        return json.loads(response.text)
-    except:
-        try:
-            if image: response = model.generate_content([prompt, image])
-            else: response = model.generate_content(prompt)
-            text = response.text.replace("```json", "").replace("```", "").strip()
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match: return json.loads(match.group(0))
-        except Exception as e: return f"ERROR: {str(e)}"
+        if image: response = model.generate_content([prompt, image])
+        else: response = model.generate_content(prompt)
+        
+        # Cleaner JSON Parsing
+        text = response.text.replace("```json", "").replace("```", "").strip()
+        # Find the first { and last }
+        start_idx = text.find('{')
+        end_idx = text.rfind('}') + 1
+        if start_idx != -1 and end_idx != -1:
+             return json.loads(text[start_idx:end_idx])
+        else:
+             # Fallback if no JSON found
+             return {"error": "No JSON found", "raw": text}
+    except Exception as e: return f"ERROR: {str(e)}"
 
 # --- STATE MANAGEMENT ---
 if "ingredients" not in st.session_state: st.session_state.ingredients = None
@@ -152,7 +155,6 @@ if "recipe_data" not in st.session_state: st.session_state.recipe_data = None
 if "trigger_search" not in st.session_state: st.session_state.trigger_search = False
 if "toast_shown" not in st.session_state: st.session_state.toast_shown = False
 if "suggested_dishes" not in st.session_state: st.session_state.suggested_dishes = []
-if "scan_done" not in st.session_state: st.session_state.scan_done = False
 
 # --- UI LAYOUT ---
 c_title, c_surprise = st.columns([4, 1])
@@ -171,33 +173,32 @@ with c_surprise:
 with st.container():
     label = "📸 SCAN FRIDGE / PANTRY (AI VISION)" if vibe_mode else "📸 Scan Ingredients"
     
-    # We close the expander automatically if scan is done to show results clearly
-    is_expanded = not st.session_state.scan_done
-    
-    with st.expander(label, expanded=is_expanded):
+    with st.expander(label):
         uploaded_file = st.file_uploader("Upload photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
         
         if uploaded_file:
             st.image(uploaded_file, width=200)
             if st.button("👀 Analyze & Suggest Dishes"):
-                with st.spinner("Analyzing..."):
+                with st.spinner("Scanning pantry..."):
                     img = Image.open(uploaded_file)
-                    # Simplified prompt for better reliability
+                    # SUPER SIMPLE PROMPT
                     prompt = """
-                    Analyze this image. 
-                    1. List detected ingredients.
-                    2. Suggest 3 dish names I can make with these.
-                    Output JSON: { "ingredients": "ing1, ing2, ing3", "suggestions": ["Dish A", "Dish B", "Dish C"] }
+                    Look at this food.
+                    1. List the main ingredients you see.
+                    2. Suggest 3 specific dish names.
+                    Output JSON only:
+                    { "ingredients": "list of ingredients", "suggestions": ["Dish A", "Dish B", "Dish C"] }
                     """
                     data = robust_api_call(prompt, img)
                     
-                    if isinstance(data, dict):
+                    if isinstance(data, dict) and "suggestions" in data:
                         st.session_state.dish_name = data.get("ingredients", "")
                         st.session_state.suggested_dishes = data.get("suggestions", [])
-                        st.session_state.scan_done = True
                         st.rerun()
+                    else:
+                        st.error("Could not read image. Try again.")
 
-# --- 2. SUGGESTION CHIPS (OUTSIDE EXPANDER) ---
+# --- 2. SUGGESTION CHIPS (PERSISTENT) ---
 if st.session_state.suggested_dishes:
     st.write("")
     if vibe_mode: st.markdown("##### 💡 FOUND THESE. CLICK TO COOK:")
@@ -209,7 +210,7 @@ if st.session_state.suggested_dishes:
             if st.button(f"🥘 {dish}", use_container_width=True, key=f"s_{i}"):
                 st.session_state.dish_name = dish
                 st.session_state.trigger_search = True
-                st.session_state.suggested_dishes = [] # Clear after selection
+                st.session_state.suggested_dishes = [] # Clear
                 st.rerun()
 
 # --- 3. TEXT INPUT ---
@@ -236,6 +237,7 @@ if submitted or st.session_state.trigger_search:
         st.session_state.toast_shown = False
         
         with st.spinner(f"Loading Assets for: {final_dish}..."):
+            # Step 1: Breakdown Ingredients
             prompt = f"""
             Dish/Ingredients: "{final_dish}" for {servings} people.
             Task: If input is ingredients, pick a dish name. Break into Core/Character.
