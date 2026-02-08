@@ -56,15 +56,24 @@ else:
 
             input { background: #000 !important; border: 2px solid #fff !important; border-bottom: 5px solid #fff !important; color: #00FF00 !important; border-radius: 0px !important; font-family: 'Space Mono', monospace !important; }
             
-            /* EXPANDER FIX FOR VIBE MODE */
+            /* EXPANDER & UPLOAD FIX - FORCED HIGH CONTRAST */
             div[data-testid="stExpander"] {
-                background-color: #000 !important; border: 2px solid #333 !important; border-radius: 0px !important; color: #fff !important;
+                background-color: #000000 !important; border: 2px solid #00FF00 !important; border-radius: 0px !important; color: #00FF00 !important;
             }
             div[data-testid="stExpander"] details summary {
-                color: #fff !important; font-family: 'Space Mono', monospace !important;
+                color: #00FF00 !important; font-family: 'Space Mono', monospace !important;
             }
-            div[data-testid="stExpander"] div[role="button"] p {
-                 font-size: 1.1rem;
+            div[data-testid="stExpander"] details summary svg {
+                fill: #00FF00 !important; /* The Arrow */
+            }
+            div[data-testid="stFileUploader"] {
+                color: #00FF00 !important;
+            }
+            div[data-testid="stFileUploader"] section {
+                background-color: #111 !important; border: 1px dashed #00FF00 !important;
+            }
+            div[data-testid="stFileUploader"] button {
+                 border: 1px solid #00FF00 !important; color: #00FF00 !important;
             }
 
             div[data-testid="stToast"] { background-color: #000 !important; border: 2px solid #00FF00 !important; color: #fff !important; opacity: 1 !important; }
@@ -108,11 +117,13 @@ def clean_list(raw_list):
 
 def robust_api_call(prompt, image=None):
     try:
-        if image: response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json"})
-        else: response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        config = {"response_mime_type": "application/json"}
+        if image: response = model.generate_content([prompt, image], generation_config=config)
+        else: response = model.generate_content(prompt, generation_config=config)
         return json.loads(response.text)
     except:
         try:
+            # Fallback if strict JSON fails
             if image: response = model.generate_content([prompt, image])
             else: response = model.generate_content(prompt)
             text = response.text.replace("```json", "").replace("```", "").strip()
@@ -127,6 +138,7 @@ if "recipe_data" not in st.session_state: st.session_state.recipe_data = None
 if "trigger_search" not in st.session_state: st.session_state.trigger_search = False
 if "toast_shown" not in st.session_state: st.session_state.toast_shown = False
 if "suggested_dishes" not in st.session_state: st.session_state.suggested_dishes = []
+if "scan_done" not in st.session_state: st.session_state.scan_done = False
 
 # --- UI LAYOUT ---
 c_title, c_surprise = st.columns([4, 1])
@@ -139,13 +151,15 @@ with c_surprise:
     if st.button("🎲 Surprise Me", use_container_width=True):
         st.session_state.dish_name = random.choice(["Shakshuka", "Pad Thai", "Tacos", "Ramen", "Bibimbap"])
         st.session_state.trigger_search = True
-        st.session_state.suggested_dishes = [] # Clear old suggestions
+        st.session_state.suggested_dishes = []
 
 # --- 1. VISION INPUT ---
 with st.container():
     label = "📸 SCAN FRIDGE / PANTRY (AI VISION)" if vibe_mode else "📸 Scan Ingredients"
-    with st.expander(label):
+    
+    with st.expander(label, expanded=not st.session_state.scan_done):
         uploaded_file = st.file_uploader("Upload photo", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+        
         if uploaded_file:
             st.image(uploaded_file, width=200)
             if st.button("👀 Analyze & Suggest Dishes"):
@@ -154,26 +168,34 @@ with st.container():
                     prompt = """
                     Analyze this image. Identify available ingredients.
                     Based on them, SUGGEST 3 distinct dish names I could cook.
-                    Output JSON: { "ingredients_detected": ["item1", "item2"], "suggestions": ["Dish A", "Dish B", "Dish C"] }
+                    
+                    OUTPUT STRICT JSON ONLY: 
+                    { "ingredients_detected": ["item1", "item2"], "suggestions": ["Dish A", "Dish B", "Dish C"] }
                     """
                     data = robust_api_call(prompt, img)
+                    
                     if isinstance(data, dict):
-                        # Update text box with ingredients so user can add more
-                        st.session_state.dish_name = ", ".join(data.get("ingredients_detected", []))
-                        # Save suggestions to state to display them
+                        # 1. Populate Text Input
+                        detected = ", ".join(data.get("ingredients_detected", []))
+                        st.session_state.dish_name = detected 
+                        # 2. Save Suggestions
                         st.session_state.suggested_dishes = data.get("suggestions", [])
+                        st.session_state.scan_done = True
                         st.rerun()
 
-# --- 2. SUGGESTION CHIPS ---
+# --- 2. SUGGESTION CHIPS (PERSISTENT) ---
 if st.session_state.suggested_dishes:
-    st.write("💡 **FOUND THESE. CLICK TO COOK:**")
+    if vibe_mode: st.markdown("### 💡 FOUND THESE. CLICK TO COOK:")
+    else: st.markdown("### 💡 Suggestions based on scan:")
+    
     cols = st.columns(3)
     for i, dish in enumerate(st.session_state.suggested_dishes):
         with cols[i]:
-            if st.button(dish, use_container_width=True):
+            # Each button triggers a rerun with the new dish name
+            if st.button(f"🥘 {dish}", use_container_width=True, key=f"sug_{i}"):
                 st.session_state.dish_name = dish
                 st.session_state.trigger_search = True
-                st.session_state.suggested_dishes = [] # Clear after selection
+                st.session_state.suggested_dishes = [] # Clear suggestions to declutter
                 st.rerun()
 
 # --- 3. TEXT INPUT ---
