@@ -8,6 +8,7 @@ import time
 import random
 import urllib.parse
 import streamlit.components.v1 as components
+from PIL import Image
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Sous", page_icon="🍳", layout="wide")
@@ -167,13 +168,19 @@ def clean_list(raw_list):
             elif isinstance(item, dict): clean_items.extend(clean_list(list(item.values())))
     return clean_items
 
-def robust_api_call(prompt):
+def robust_api_call(prompt, image=None):
     try:
-        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        if image:
+            response = model.generate_content([prompt, image], generation_config={"response_mime_type": "application/json"})
+        else:
+            response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         return json.loads(response.text)
     except:
         try:
-            response = model.generate_content(prompt)
+            if image:
+                response = model.generate_content([prompt, image])
+            else:
+                response = model.generate_content(prompt)
             text = response.text.replace("```json", "").replace("```", "").strip()
             match = re.search(r'\{.*\}', text, re.DOTALL)
             if match: return json.loads(match.group(0))
@@ -258,22 +265,51 @@ with c_surprise:
         st.session_state.dish_name = random.choice(GLOBAL_DISHES)
         st.session_state.trigger_search = True
 
-# INPUT
-with st.form("input_form"):
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        val = st.session_state.dish_name if st.session_state.trigger_search else ""
-        if vibe_mode:
-            dish_input = st.text_input("What's living rent-free in your head?", value=val, placeholder="e.g. Carbonara (It slaps)...")
-        else:
-            dish_input = st.text_input("What are you craving?", value=val, placeholder="e.g. Carbonara...")
-    with col2:
-        servings = st.slider("Servings", 1, 8, 2)
-    
+# --- INPUT SECTION (TEXT + VISION) ---
+with st.container():
+    # 1. Vision Input (Expander)
     if vibe_mode:
-        submitted = st.form_submit_button("🔥 BET / LET'S COOK", use_container_width=True)
+        vision_label = "📸 SCAN FRIDGE / PANTRY (AI VISION)"
     else:
-        submitted = st.form_submit_button("Let's Cook", use_container_width=True)
+        vision_label = "📸 Scan Ingredients"
+
+    with st.expander(vision_label):
+        uploaded_file = st.file_uploader("Upload a photo of your fridge or pantry", type=["jpg", "jpeg", "png"])
+        if uploaded_file:
+            st.image(uploaded_file, caption="Scanning...", width=200)
+            if st.button("👀 Analyze Image"):
+                with st.spinner("Analyzing ingredients..."):
+                    try:
+                        image = Image.open(uploaded_file)
+                        prompt = """
+                        Identify 5-8 distinct ingredients in this image. 
+                        Return JSON only: { "ingredients": ["item1", "item2", "item3"] }
+                        """
+                        data = robust_api_call(prompt, image)
+                        if isinstance(data, dict) and "ingredients" in data:
+                            detected = ", ".join(data["ingredients"])
+                            st.session_state.dish_name = detected # Auto-fill text input
+                            st.session_state.trigger_search = True # Trigger the cook flow
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Vision Error: {e}")
+
+    # 2. Text Input
+    with st.form("input_form"):
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            val = st.session_state.dish_name if st.session_state.trigger_search else ""
+            if vibe_mode:
+                dish_input = st.text_input("What's living rent-free in your head?", value=val, placeholder="e.g. Carbonara (It slaps)...")
+            else:
+                dish_input = st.text_input("What are you craving?", value=val, placeholder="e.g. Carbonara...")
+        with col2:
+            servings = st.slider("Servings", 1, 8, 2)
+        
+        if vibe_mode:
+            submitted = st.form_submit_button("🔥 BET / LET'S COOK", use_container_width=True)
+        else:
+            submitted = st.form_submit_button("Let's Cook", use_container_width=True)
 
 # LOGIC
 if submitted or st.session_state.trigger_search:
@@ -286,16 +322,30 @@ if submitted or st.session_state.trigger_search:
         st.session_state.toast_shown = False
         
         with st.spinner(f"Loading Assets for: {final_dish}..."):
+            # Check if input is a dish name OR a list of ingredients
             prompt = f"""
-            Dish: {final_dish} for {servings} people.
-            Task: Break down ingredients into exactly 2 categories.
+            Input: "{final_dish}" for {servings} people.
+            
+            Task: 
+            1. If input is a Dish Name (e.g. "Carbonara"), break it down into Core/Character ingredients.
+            2. If input is a List of Ingredients (e.g. "Eggs, Bacon, Pasta"), use them to SUGGEST a dish name, then break down.
+            
             OUTPUT JSON STRUCTURE ONLY:
-            {{ "core": ["Ing 1", "Ing 2"], "character": ["Ing 3", "Ing 4"] }}
+            {{ 
+                "dish_name": "Name of Dish",
+                "core": ["Ing 1", "Ing 2"], 
+                "character": ["Ing 3", "Ing 4"] 
+            }}
             RULES: 1. Core = Non-negotiables. 2. Character = Spices/Herbs. 3. No Nulls.
             """
             data = robust_api_call(prompt)
-            if isinstance(data, dict): st.session_state.ingredients = data
-            else: st.error(f"System Failure. Details: {data}")
+            if isinstance(data, dict): 
+                st.session_state.ingredients = data
+                # Update dish name if AI suggested one (e.g. from vision scan)
+                if "dish_name" in data:
+                    st.session_state.dish_name = data["dish_name"]
+            else: 
+                st.error(f"System Failure. Details: {data}")
 
 # DASHBOARD
 if st.session_state.ingredients:
